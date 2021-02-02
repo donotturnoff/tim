@@ -36,6 +36,7 @@ int main(void) {
             NULL
     );
     //Exp *prog = apply(function(var("x", integer_t()), plus(integer(1), get_var("x", NULL), NULL), NULL), integer(1), NULL);
+    prog = apply1;
     Type *t = type(prog);
     char *exp_str = to_string_exp(prog);
     if (t) {

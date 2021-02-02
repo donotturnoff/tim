@@ -42,7 +42,7 @@ Exp *get_env_var(Env *env, char *name) {
         }
         current = current->next;
     }
-    printf( "Error: variable %s not defined\n", name);
+    printf( "Runtime error: variable %s not in scope\n", name);
     return NULL;
 }
 
@@ -58,7 +58,7 @@ Type *get_env_var_type(Env *env, char *name) {
         }
         current = current->next;
     }
-    printf( "Error: variable %s not defined\n", name);
+    printf( "Type error: variable %s not in scope\n", name);
     return NULL;
 }
 
