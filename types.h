@@ -1,73 +1,49 @@
-#ifndef TYPES_H
-#define TYPES_H
+#ifndef TIM_TYPES_H
+#define TIM_TYPES_H
 
-#include <string>
-#include <array>
+typedef enum type_name {
+    GENERIC_T, UNIT_T, BOOLEAN_T, INTEGER_T, FUNCTION_T, SUM_T, PRODUCT_T
+} TypeName;
 
-class Type {
-  public:    
-    virtual std::string get_name() = 0;
-    
-    virtual std::string to_string() = 0;
-    
-    virtual bool operator==(Type &t) {
-        return get_name().compare(t.get_name()) == 0;
-    }
-    
-    virtual bool operator!=(Type &t) {
-        return !(*this == t);
-    }
-    
-    virtual ~Type() {}
-};
+typedef union type_choice TypeChoice;
+typedef struct function_type FunctionType;
+typedef struct sum_type SumType;
+typedef struct product_type ProductType;
 
-class BoolType : public Type {
-  public:
-    virtual std::string get_name();
-    virtual std::string to_string();
-};
+typedef struct type {
+    TypeName name;
+    char *custom;
+    TypeChoice *t;
+} Type;
 
-class IntType : public Type {
-  public:
-    virtual std::string get_name();
-    virtual std::string to_string();
-};
+typedef union type_choice {
+    FunctionType *f;
+    SumType *s;
+    ProductType *p;
+} TypeChoice;
 
-class UnitType : public Type {
-  public:
-    virtual std::string get_name();
-    virtual std::string to_string();
-};
+typedef struct function_type {
+    Type *arg, *body;
+} FunctionType;
 
-class VoidType : public Type {
-  public:
-    virtual std::string get_name();
-    virtual std::string to_string();
-};
+typedef struct sum_type {
+    Type *t1, *t2;
+} SumType;
 
-template<int n>
-class TupleType : public Type {
-    std::array<Type *, n> types;
-  public:
-    TupleType(std::array<Type *, n> types);
-    virtual std::string get_name();
-    virtual std::string to_string();
-    std::array<Type *, n> get_types();
-    virtual bool operator==(Type &t);
-};
+typedef struct product_type {
+    Type *t1, *t2;
+} ProductType;
 
-class FnType : public Type {
-    Type *arg;
-    Type *ret;
-  public:
-    FnType(Type *arg, Type *ret);
-    virtual std::string get_name();
-    virtual std::string to_string();
-    Type *get_arg_type();
-    Type *get_ret_type();
-    virtual bool operator==(Type &t);
-}
+int equal_types(Type *t1, Type *t2);
+Type *generic_t(void);
+Type *unit_t(void);
+Type *boolean_t(void);
+Type *integer_t(void);
+Type *function_t(Type *arg_t, Type *body_t);
+Type *sum_t(Type *t1, Type *t2);
+Type *product_t(Type *t1, Type *t2);
+Type *copy_type(Type *t);
+char *to_string_type(Type *t);
+int free_type(Type *t);
 
-#include "TupleType.cpp"
-
-#endif
+#endif //TIM_TYPES_H
