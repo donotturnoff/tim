@@ -3,21 +3,9 @@
 #include <string.h>
 #include "expressions.h"
 
-int allocate_plus(Exp *plus_exp) {
-    plus_exp->e->plus = (Plus *) malloc(sizeof(Plus));
-    if (!plus_exp->e->plus) {
-        printf("Error: failed to allocate memory for Plus in plus\n");
-        free(plus_exp->env);
-        free(plus_exp->e);
-        free(plus_exp);
-        return 0;
-    }
-    return 1;
-}
-
 Exp *plus(Exp *exp1, Exp *exp2, Env *env) {
-    Exp *plus_exp = allocate_exp_base("plus");
-    if (!(plus_exp && allocate_plus(plus_exp))) return NULL;
+    Exp *plus_exp = allocate_exp_base();
+    plus_exp->e->plus = (Plus *) malloc_or_die(sizeof(Plus));
 
     plus_exp->name = PLUS;
     plus_exp->is_irreducible = 0;
@@ -48,11 +36,9 @@ Exp *step_plus(Exp *exp) {
         return new_exp;
     } else {
         if (exp1->name != INTEGER) {
-            printf("Error: unexpected dynamic type mismatch in plus operation: operand 1 is not an integer\n");
-            return NULL;
+            die(RUNTIME_ERR, "argument 1 of plus is not an integer");
         } else if (exp2->name != INTEGER) {
-            printf("Error: unexpected dynamic type mismatch in plus operation: operand 2 is not an integer\n");
-            return NULL;
+            die(RUNTIME_ERR, "argument 2 of plus is not an integer");
         } else {
             int val1 = exp1->e->integer->val;
             int val2 = exp2->e->integer->val;
@@ -71,27 +57,19 @@ Type *type_plus(Exp *exp) {
     add_env(exp1->env, env);
     add_env(exp2->env, env);
     Type *exp1_t = type(exp1);
-    if (!exp1_t) return NULL;
     Type *exp2_t = type(exp2);
-    if (!exp2_t) {
-        free_type(exp1_t);
-        return NULL;
-    }
 
-    Type *t = NULL;
     if (exp1_t->name != INTEGER_T) {
-        printf("Error: type mismatch in plus operation: operand 1 is a %s but should be an integer\n", to_string_type(exp1_t));
+        die(TYPE_ERR, "type mismatch in plus operation: operand 1 is a %s but should be an integer",
+            to_string_type(exp1_t));
     } else if (exp2_t->name != INTEGER_T) {
-        printf("Error: type mismatch in plus operation: operand 2 is a %s but should be an integer\n", to_string_type(exp2_t));
+        die(TYPE_ERR, "type mismatch in plus operation: operand 2 is a %s but should be an integer",
+            to_string_type(exp2_t));
     } else {
-        t = (Type *) malloc(sizeof(Type));
-        if (!t) printf("Error: failed to allocate memory for Type in type_plus\n");
-        else t->name = INTEGER_T;
+        Type *t = (Type *) malloc_or_die(sizeof(Type));
+        t->name = INTEGER_T;
+        return t;
     }
-
-    free_type(exp1_t);
-    free_type(exp2_t);
-    return t;
 }
 
 Exp *copy_plus(Exp *exp) {
@@ -106,11 +84,7 @@ char *to_string_plus(Exp *exp) {
     size_t len1 = strlen(exp1_str);
     size_t len2 = strlen(exp2_str);
     size_t len = (len1 + len2 + 6);
-    char *buf = (char *) malloc(len * sizeof(char));
-    if (!buf) {
-        printf("Error: failed to allocate memory in to_string_plus\n");
-        return NULL;
-    }
+    char *buf = (char *) malloc_or_die(len * sizeof(char));
     snprintf(buf, len, "(%s + %s)", exp1_str, exp2_str);
 
     free(exp1_str);
@@ -119,16 +93,17 @@ char *to_string_plus(Exp *exp) {
     return buf;
 }
 
-int free_plus(Exp *exp, int descend) {
+void free_plus(Exp *exp, int descend) {
     if (exp->name == PLUS) {
-        if (descend && !(free_exp(exp->e->plus->exp1, 1) && free_exp(exp->e->plus->exp2, 1))) return 0;
+        if (descend) {
+            free_exp(exp->e->plus->exp1, 1);
+            free_exp(exp->e->plus->exp2, 1);
+        }
         free(exp->e->plus);
         free_env(exp->env);
         free(exp->e);
         free(exp);
-        return 1;
     } else {
-        printf("Warning: attempted to call free_plus on non-plus\n");
-        return 0;
+        die(INTERPRETER_ERR, "attempted to call free_plus on non-plus");
     }
 }

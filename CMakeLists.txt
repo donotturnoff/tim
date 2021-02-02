@@ -16,6 +16,7 @@ add_executable(tim
         get_var.c
         integer.c
         plus.c
+        tim.h
         tim.c
         types.c
         types.h

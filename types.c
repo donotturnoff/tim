@@ -16,60 +16,31 @@ int equal_types(Type *t1, Type *t2) {
     }
 }
 
-Type *generic_t() {
-    Type *t = (Type *) malloc(sizeof(Type));
-    if (!t) {
-        printf("Error: failed to allocate memory for Type in generic_t\n");
-        return NULL;
-    }
-    t->name = GENERIC_T;
+Type *allocate_type(TypeName name) {
+    Type *t = (Type *) malloc_or_die(sizeof(Type));
+    t->name = name;
     t->t = NULL;
     t->custom = NULL;
-    return t;
+}
+
+Type *generic_t() {
+    return allocate_type(GENERIC_T);
 }
 
 Type *unit_t() {
-    Type *t = (Type *) malloc(sizeof(Type));
-    if (!t) {
-        printf("Error: failed to allocate memory for Type in unit_t\n");
-        return NULL;
-    }
-    t->name = UNIT_T;
-    t->t = NULL;
-    t->custom = NULL;
-    return t;
+    return allocate_type(UNIT_T);
 }
 
 Type *integer_t() {
-    Type *t = (Type *) malloc(sizeof(Type));
-    if (!t) {
-        printf("Error: failed to allocate memory for Type in integer_t\n");
-        return NULL;
-    }
-    t->name = INTEGER_T;
-    t->t = NULL;
-    t->custom = NULL;
-    return t;
+    return allocate_type(INTEGER_T);
 }
 
 Type *function_t(Type *arg_t, Type *body_t) {
-    Type *t = (Type *) malloc(sizeof(Type));
-    if (!t) {
-        printf("Error: failed to allocate memory for Type in function_t\n");
-        return NULL;
-    }
+    Type *t = (Type *) malloc_or_die(sizeof(Type));
     t->name = FUNCTION_T;
     t->custom = NULL;
-    t->t = (TypeChoice *) malloc(sizeof(TypeChoice));
-    if (!t->t) {
-        printf("Error: failed to allocate memory for TypeChoice in function_t\n");
-        return NULL;
-    }
-    t->t->f = (FunctionType *) malloc(sizeof(FunctionType));
-    if (!t->t->f) {
-        printf("Error: failed to allocate memory for FunctionType in function_t\n");
-        return NULL;
-    }
+    t->t = (TypeChoice *) malloc_or_die(sizeof(TypeChoice));
+    t->t->f = (FunctionType *) malloc_or_die(sizeof(FunctionType));
     t->t->f->arg = arg_t;
     t->t->f->body = body_t;
     return t;
@@ -89,31 +60,25 @@ Type *copy_type(Type *t) {
         case INTEGER_T:     return integer_t();
         case FUNCTION_T:    return copy_function_t(t);
 
-        default: return NULL; // TODO: error message
+        default: die(INTERPRETER_ERR, "attempted to copy unknown type");
     }
 }
 
 char *to_string_generic_type(void) {
-    char *str;
-    str = (char *) malloc(8 * sizeof(char));
-    if (!str) printf("Error: failed to allocate memory for char * in to_string_generic_type\n");
-    else snprintf(str, 8, "generic");
+    char *str = (char *) malloc_or_die(8 * sizeof(char));
+    snprintf(str, 8, "generic");
     return str;
 }
 
 char *to_string_unit_type(void) {
-    char *str;
-    str = (char *) malloc(5 * sizeof(char));
-    if (!str) printf("Error: failed to allocate memory for char * in to_string_unit_type\n");
-    else snprintf(str, 5, "unit");
+    char *str = (char *) malloc_or_die(5 * sizeof(char));
+    snprintf(str, 5, "unit");
     return str;
 }
 
 char *to_string_integer_type(void) {
-    char *str;
-    str = (char *) malloc(8 * sizeof(char));
-    if (!str) printf("Error: failed to allocate memory for char * in to_string_integer_type\n");
-    else snprintf(str, 8, "integer");
+    char *str = (char *) malloc_or_die(8 * sizeof(char));
+    snprintf(str, 8, "integer");
     return str;
 }
 
@@ -124,11 +89,7 @@ char *to_string_function_type(Type *t) {
     size_t len1 = strlen(arg_str);
     size_t len2 = strlen(body_str);
     size_t len = len1 + len2 + 7;
-    char *buf = (char *) malloc(len * sizeof(char));
-    if (!buf) {
-        printf("Error: failed to allocate memory in to_string_function_type\n");
-        return NULL;
-    }
+    char *buf = (char *) malloc_or_die(len * sizeof(char));
     snprintf(buf, len, "(%s -> %s)", arg_str, body_str);
 
     free(arg_str);
@@ -145,18 +106,18 @@ char *to_string_type(Type *t) {
         case INTEGER_T:     return to_string_integer_type();
         case FUNCTION_T:    return to_string_function_type(t);
 
-        default: return NULL; // TODO: error on invalid type
+        default: die(INTERPRETER_ERR, "attempted to convert unknown type to string");
     }
 }
 
-int free_type(Type *t) {
-    if (!t) return 1;
+void free_type(Type *t) {
+    if (!t) return;
     switch (t->name) {
         case GENERIC_T:
         case UNIT_T:
-        case INTEGER_T:     free(t); return 1;
-        case FUNCTION_T:    free_type(t->t->f->arg); free_type(t->t->f->body); free(t->t->f); free(t->t); free(t); return 1;
+        case INTEGER_T:     free(t);
+        case FUNCTION_T:    free_type(t->t->f->arg); free_type(t->t->f->body); free(t->t->f); free(t->t); free(t);
 
-        default: return 0; // TODO: error on invalid type
+        default: die(INTERPRETER_ERR, "attempted to free unknown type");
     }
 }

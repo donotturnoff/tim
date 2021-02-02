@@ -3,21 +3,10 @@
 #include <string.h>
 #include "expressions.h"
 
-int allocate_get_var(Exp *get_var_exp) {
-    get_var_exp->e->get_var = (GetVar *) malloc(sizeof(GetVar));
-    if (!get_var_exp->e->get_var) {
-        printf("Error: failed to allocate memory for GetVar in get_var\n");
-        free(get_var_exp->env);
-        free(get_var_exp->e);
-        free(get_var_exp);
-        return 0;
-    }
-    return 1;
-}
-
 Exp *get_var(char *name, Env *env) {
-    Exp *get_var_exp = allocate_exp_base("get_var");
-    if (!(get_var_exp && allocate_get_var(get_var_exp))) return NULL;
+    Exp *get_var_exp = allocate_exp_base();
+
+    get_var_exp->e->get_var = (GetVar *) malloc_or_die(sizeof(GetVar));
 
     get_var_exp->name = GET_VAR;
     get_var_exp->is_irreducible = 0;
@@ -30,15 +19,18 @@ Exp *get_var(char *name, Env *env) {
 
 Exp *step_get_var(Exp *exp) {
     Env *env = exp->env;
-    GetVar *get_var = exp->e->get_var;
-    Exp *var = get_env_var(env, get_var->name);
+    char *name = exp->e->get_var->name;
+    Exp *var = get_env_var(env, name);
+    if (!var) die(SCOPE_ERR, "variable %s not in scope at runtime", name);
     return var;
 }
 
 Type *type_get_var(Exp *exp) {
     Env *env = exp->env;
     char *name = exp->e->get_var->name;
-    return get_env_var_type(env, name);
+    Type *t = get_env_var_type(env, name);
+    if (!t) die(SCOPE_ERR, "variable %s not in scope at typecheck-time", name);
+    return t;
 }
 
 Exp *copy_get_var(Exp *exp) {
@@ -47,37 +39,29 @@ Exp *copy_get_var(Exp *exp) {
 }
 
 char *to_string_get_var(Exp *exp) {
-    Exp *env_exp = get_env_var(exp->env, exp->e->get_var->name);
     char *name = exp->e->get_var->name;
-    char *exp_str = to_string_exp(env_exp);
-    if (exp_str) {
+    Exp *env_exp = get_env_var(exp->env, exp->e->get_var->name);
+    if (env_exp) {
+        char *exp_str = to_string_exp(env_exp);
         size_t buf_size = strlen(name) + strlen(exp_str) + 4;
-        char *get_var_str = (char *) malloc(buf_size * sizeof(char));
-        if (!get_var_str) {
-            printf("Memory error: failed to allocate memory for char * in to_string_get_var\n");
-        }
+        char *get_var_str = (char *) malloc_or_die(buf_size * sizeof(char));
         snprintf(get_var_str, buf_size, "%s{=%s}", name, exp_str);
         return get_var_str;
     } else {
         size_t buf_size = strlen(name) + 1;
-        char *get_var_str = (char *) malloc(buf_size * sizeof(char));
-        if (!get_var_str) {
-            printf("Memory error: failed to allocate memory for char * in to_string_get_var\n");
-        }
+        char *get_var_str = (char *) malloc_or_die(buf_size * sizeof(char));
         strcpy(get_var_str, name);
         return get_var_str;
     }
 }
 
-int free_get_var(Exp *exp) {
+void free_get_var(Exp *exp) {
     if (exp->name == GET_VAR) {
         free(exp->e->get_var);
         free(exp->e);
         free_env(exp->env);
         free(exp);
-        return 1;
     } else {
-        printf("Warning: attempted to call free_get_var on non-get_var\n");
-        return 0;
+        die(INTERPRETER_ERR, "attempted to call free_get_var on non-get_var");
     }
 }

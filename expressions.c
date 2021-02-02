@@ -3,35 +3,29 @@
 #include "expressions.h"
 
 Exp *step(Exp *exp) {
-    if (exp->is_irreducible) {
-        printf("Error: attempted to take reduction step on irreducible e: %s\n", to_string_exp(exp));
-        return NULL;
-    }
+    if (exp->is_irreducible)
+        die(RUNTIME_ERR, "attempted to take reduction step on irreducible expression %s", to_string_exp(exp));
 
     switch (exp->name) {
         case PLUS:      return step_plus(exp);
         case APPLY:     return step_apply(exp);
         case GET_VAR:   return step_get_var(exp);
-
-        default: printf("Error: attempted to take reduction step on unknown e: %s\n", to_string_exp(exp)); return NULL;
+        default: die(RUNTIME_ERR, "attempted to take reduction step on unknown expression");
     }
 }
 
 Type *type(Exp *exp) {
-    Type *t;
+    Type *t = NULL;
     switch (exp->name) {
-        case UNIT:      t = (Type *) malloc(sizeof(Type)); t->name = UNIT_T; break; //TODO: handle malloc errors
-        case INTEGER:   t = (Type *) malloc(sizeof(Type)); t->name = INTEGER_T; break;
+        case UNIT:      t = unit_t(); break;
+        case INTEGER:   t = integer_t(); break;
         case FUNCTION:  t = type_function(exp); break;
-        //case SUM:       t = type_sum(e); break;
-        //case PRODUCT:   t = type_product(e); break;
-
         case PLUS:      t = type_plus(exp); break;
         case APPLY:     t = type_apply(exp); break;
         case VAR:       t = type_var(exp); break;
         case GET_VAR:   t = type_get_var(exp); break;
 
-        default:        t = NULL;
+        default: die(INTERPRETER_ERR, "attempted to type unknown expression");
     }
     return t;
 }
@@ -47,7 +41,7 @@ Exp *copy_exp(Exp *exp) {
         case VAR:       return copy_var(exp);
         case GET_VAR:   return copy_get_var(exp);
 
-        default: return NULL; // TODO: error
+        default: die(INTERPRETER_ERR, "attempted to copy unknown expression");
     }
 }
 
@@ -62,52 +56,33 @@ char *to_string_exp(Exp *exp) {
         case VAR:       return to_string_var(exp);
         case GET_VAR:   return to_string_get_var(exp);
 
-        default: return NULL;
+        default: die(INTERPRETER_ERR, "attempted to convert unknown expression to string");
     }
 }
 
-int free_exp(Exp *exp, int descend) {
-    if (!exp) return 1;
+void free_exp(Exp *exp, int descend) {
+    if (!exp) die(INTERPRETER_ERR, "attempted to free null expression");
 
     switch (exp->name) {
-        case UNIT:      return free_unit(exp);
-        case INTEGER:   return free_integer(exp);
-        case FUNCTION:  return free_function(exp, descend);
-            //case SUM:       return to_string_sum(e, descend);
-            //case PRODUCT:   return to_string_product(e, descend);
+        case UNIT:      free_unit(exp);
+        case INTEGER:   free_integer(exp);
+        case FUNCTION:  free_function(exp, descend);
+        case PLUS:      free_plus(exp, descend);
+        case APPLY:     free_apply(exp, descend);
+        case VAR:       free_var(exp);
+        case GET_VAR:   free_get_var(exp);
 
-        case PLUS:      return free_plus(exp, descend);
-        case APPLY:     return free_apply(exp, descend);
-        case VAR:       return free_var(exp);
-        case GET_VAR:   return free_get_var(exp);
-
-        default: return 0;
+        default: die(INTERPRETER_ERR, "attempted to free unknown expression");
     }
 }
 
-Exp *allocate_exp_base(char *name) {
-    Exp *exp = (Exp *) malloc(sizeof(Exp));
-    if (!exp) {
-        printf("Error: failed to allocate memory for Exp in %s\n", name);
-        return NULL;
-    }
+Exp *allocate_exp_base() {
+    Exp *exp = (Exp *) malloc_or_die(sizeof(Exp));
+    exp->e = (ExpChoice *) malloc_or_die(sizeof(ExpChoice));
+    exp->env = (Env *) malloc_or_die(sizeof(Env));
+
     exp->name = UNDEFINED;
     exp->is_irreducible = 1;
-
-    exp->e = (ExpChoice *) malloc(sizeof(ExpChoice));
-    if (!exp->e) {
-        printf("Error: failed to allocate memory for ExpChoice in %s\n", name);
-        free(exp);
-        return NULL;
-    }
-
-    exp->env = (Env *) malloc(sizeof(Env));
-    if (!exp->env) {
-        printf("Error: failed to allocate memory for Env in %s\n", name);
-        free(exp->e);
-        free(exp);
-        return NULL;
-    }
     exp->env->ef = NULL;
     exp->env->back_ef = NULL;
 

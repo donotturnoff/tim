@@ -1,6 +1,7 @@
 #ifndef TIM_ENVIRONMENT_H
 #define TIM_ENVIRONMENT_H
 
+#include "tim.h"
 #include "expressions.h"
 #include "types.h"
 #include "environment.h"
@@ -25,7 +26,7 @@ Exp *get_env_var(Env *env, char *name);
 int add_env(Env *dst_env, Env *src_env);
 Env *copy_env(Env *env);
 void free_env(Env *env);
-const char *to_string_env(Env *env);
+char *to_string_env(Env *env);
 void print_env(Env *env);
 
 #endif //TIM_ENVIRONMENT_H

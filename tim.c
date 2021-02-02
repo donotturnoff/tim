@@ -1,8 +1,32 @@
+#include "tim.h"
 #include "types.h"
 #include "expressions.h"
-#include "environment.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
+
+void die(ErrorType e, const char *msg, ...) {
+    va_list args;
+    va_start(args, msg);
+
+    va_end(args);
+    switch (e) {
+        case TYPE_ERR: fprintf(stderr, "Type error: "); break;
+        case SCOPE_ERR: fprintf(stderr, "Scope error: "); break;
+        case RUNTIME_ERR: fprintf(stderr, "Runtime error: "); break;
+        case MEMORY_ERR: fprintf(stderr, "Memory error: "); break;
+        default: fprintf(stderr, "Interpreter error: "); break;
+    }
+    vfprintf(stderr, msg, args);
+    fprintf(stderr, "\n");
+    exit(e);
+}
+
+void *malloc_or_die(size_t size) {
+    void *ptr = malloc(size);
+    if (!ptr) die(MEMORY_ERR, "malloc failed");
+    return ptr;
+}
 
 int main(void) {
     Exp *id = function(var("x", NULL), get_var("x", NULL), NULL);
@@ -13,7 +37,7 @@ int main(void) {
     );
     Exp *apply2 = apply(
             function(
-                    var("f", NULL),
+                    var("f", function_t(integer_t(), integer_t())),
                     function(
                             var("x", integer_t()),
                             apply1,
@@ -31,31 +55,21 @@ int main(void) {
             ),
             NULL
     );
-    Exp *prog = apply(
-            apply2,
-            integer(1),
-            NULL
-    );
-    //Exp *prog = apply(function(var("x", integer_t()), plus(integer(1), get_var("x", NULL), NULL), NULL), integer(1), NULL);
-    prog = apply(id, unit(), NULL);
-    Type *t = type(prog);
+    Exp *prog = apply(function(var("x", NULL), apply2, NULL), integer(7), NULL); // breaks it
+    prog = apply(apply(id, function(var("x", NULL), apply2, NULL), NULL), integer(7), NULL); // breaks it
+    prog = apply(function(var("x", integer_t()), plus(integer(1), get_var("x", NULL), NULL), NULL), integer(1), NULL);
+    //prog = plus(integer(1), integer(2), NULL);
     char *exp_str = to_string_exp(prog);
-    if (t) {
-        char *t_str = to_string_type(t);
-        printf("%s : %s\n", exp_str, t_str);
-        free(exp_str);
-        free_type(t);
-    } else {
-        printf("%s : ?\n", exp_str);
-        free(exp_str);
-        free_type(t);
-        free_exp(prog, 1);
-        return 1;
-    }
+    printf("%s", exp_str);
+    Type *t = type(prog);
+    char *t_str = to_string_type(t);
+    printf(" : %s\n", t_str);
+    free(exp_str);
+
     while (prog && !prog->is_irreducible) {
         Exp *new_prog = step(prog);
         exp_str = to_string_exp(new_prog);
-        if (new_prog) printf("-> %s\n", exp_str);
+        printf("-> %s\n", exp_str);
         free(exp_str);
         prog = new_prog;
     }

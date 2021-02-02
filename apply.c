@@ -3,21 +3,9 @@
 #include <string.h>
 #include "expressions.h"
 
-int allocate_apply(Exp *apply_exp) {
-    apply_exp->e->apply = (Apply *) malloc(sizeof(Apply));
-    if (!apply_exp->e->apply) {
-        printf("Error: failed to allocate memory for Apply in apply\n");
-        free(apply_exp->env);
-        free(apply_exp->e);
-        free(apply_exp);
-        return 0;
-    }
-    return 1;
-}
-
 Exp *apply(Exp *f, Exp *exp, Env *env) {
-    Exp *apply_exp = allocate_exp_base("apply");
-    if (!(apply_exp && allocate_apply(apply_exp))) return NULL;
+    Exp *apply_exp = allocate_exp_base();
+    apply_exp->e->apply = (Apply *) malloc_or_die(sizeof(Apply));
 
     apply_exp->name = APPLY;
     apply_exp->is_irreducible = 0;
@@ -48,8 +36,9 @@ Exp *step_apply(Exp *exp) {
         return new_exp;
     } else {
         if (exp1->name != FUNCTION) {
-            // TODO: error message
-            return NULL;
+            die(RUNTIME_ERR, "argument 1 of apply is not a function");
+        } else if (!exp2->is_irreducible) {
+            die(RUNTIME_ERR, "argument 2 of apply is not irreducible");
         } else {
             Function *f = exp1->e->function;
             char *arg_name = f->arg->e->var->name;
@@ -74,12 +63,7 @@ Type *type_apply(Exp *exp) {
     add_env(function->env, env);
     add_env(exp1->env, env);
     Type *f_t = type(function);
-    if (!f_t) return NULL;
     Type *exp1_t = type(exp1);
-    if (!exp1_t) {
-        free_type(f_t);
-        return NULL;
-    }
 
     Type *t = NULL;
 
@@ -89,11 +73,9 @@ Type *type_apply(Exp *exp) {
     if (arg_t->name == GENERIC_T || equal_types(arg_t, exp1_t)) {
         t = copy_type(body_t);
     } else {
-        printf("Error: type mismatch in function application: %s cannot be applied to %s\n", to_string_type(f_t), to_string_type(exp1_t));
+        die(TYPE_ERR, "type mismatch in function application: %s cannot be applied to %s", to_string_type(f_t),
+            to_string_type(exp1_t));
     }
-
-    //free_type(f_t);
-    free_type(exp1_t);
     return t;
 }
 
@@ -109,11 +91,7 @@ char *to_string_apply(Exp *exp) {
     size_t len1 = strlen(f_str);
     size_t len2 = strlen(exp_str);
     size_t len = len1 + len2 + 4;
-    char *buf = (char *) malloc(len * sizeof(char));
-    if (!buf) {
-        printf("Error: failed to allocate memory in to_string_apply\n");
-        return NULL;
-    }
+    char *buf = (char *) malloc_or_die(len * sizeof(char));
     snprintf(buf, len, "(%s %s)", f_str, exp_str);
 
     free(f_str);
@@ -122,16 +100,17 @@ char *to_string_apply(Exp *exp) {
     return buf;
 }
 
-int free_apply(Exp *exp, int descend) {
+void free_apply(Exp *exp, int descend) {
     if (exp->name == APPLY) {
-        if (descend && !(free_exp(exp->e->apply->f, 1) && free_exp(exp->e->apply->exp, 1))) return 0;
+        if (descend) {
+            free_exp(exp->e->apply->f, 1);
+            free_exp(exp->e->apply->exp, 1);
+        }
         free(exp->e->apply);
         free(exp->e);
         free_env(exp->env);
         free(exp);
-        return 1;
     } else {
-        printf("Warning: attempted to call free_var on non-var\n");
-        return 0;
+        die(INTERPRETER_ERR, "attempted to call free_var on non-var");
     }
 }
