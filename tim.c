@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 int main(void) {
+    Exp *id = function(var("x", NULL), get_var("x", NULL), NULL);
     Exp *apply1 = apply(
             get_var("f", NULL),
             get_var("x", NULL),
@@ -12,7 +13,7 @@ int main(void) {
     );
     Exp *apply2 = apply(
             function(
-                    var("f", function_t(integer_t(), integer_t())),
+                    var("f", NULL),
                     function(
                             var("x", integer_t()),
                             apply1,
@@ -36,7 +37,7 @@ int main(void) {
             NULL
     );
     //Exp *prog = apply(function(var("x", integer_t()), plus(integer(1), get_var("x", NULL), NULL), NULL), integer(1), NULL);
-    prog = apply1;
+    prog = apply(id, unit(), NULL);
     Type *t = type(prog);
     char *exp_str = to_string_exp(prog);
     if (t) {

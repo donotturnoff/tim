@@ -7,9 +7,7 @@ set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -fsanitize=address")
 include_directories(..)
 
 add_executable(tim
-        and.c
         apply.c
-        boolean.c
         environment.c
         environment.h
         expressions.c
@@ -17,12 +15,7 @@ add_executable(tim
         function.c
         get_var.c
         integer.c
-        minus.c
-        not.c
-        or.c
         plus.c
-        product.c
-        sum.c
         tim.c
         types.c
         types.h

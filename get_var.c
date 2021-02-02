@@ -48,13 +48,25 @@ Exp *copy_get_var(Exp *exp) {
 
 char *to_string_get_var(Exp *exp) {
     Exp *env_exp = get_env_var(exp->env, exp->e->get_var->name);
-    char *str;
-    if (env_exp) str = to_string_exp(env_exp);
-    else str = exp->e->get_var->name;
-    size_t buf_size = strlen(str) + 1;
-    char *get_var_str = (char *) malloc(buf_size * sizeof(char));
-    strcpy(get_var_str, str);
-    return get_var_str;
+    char *name = exp->e->get_var->name;
+    char *exp_str = to_string_exp(env_exp);
+    if (exp_str) {
+        size_t buf_size = strlen(name) + strlen(exp_str) + 4;
+        char *get_var_str = (char *) malloc(buf_size * sizeof(char));
+        if (!get_var_str) {
+            printf("Memory error: failed to allocate memory for char * in to_string_get_var\n");
+        }
+        snprintf(get_var_str, buf_size, "%s{=%s}", name, exp_str);
+        return get_var_str;
+    } else {
+        size_t buf_size = strlen(name) + 1;
+        char *get_var_str = (char *) malloc(buf_size * sizeof(char));
+        if (!get_var_str) {
+            printf("Memory error: failed to allocate memory for char * in to_string_get_var\n");
+        }
+        strcpy(get_var_str, name);
+        return get_var_str;
+    }
 }
 
 int free_get_var(Exp *exp) {
