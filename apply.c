@@ -43,7 +43,7 @@ Exp *step_apply(Exp *exp) {
             Function *f = exp1->e->function;
             char *arg_name = f->arg->e->var->name;
             Exp *body = f->body;
-            add_env(body->env, env);
+            add_env(body->env, env); // TODO: work out why this isn't necessary
             add_env(body->env, exp1->env);
             put_env_var(body->env, arg_name, NULL, exp2);
             /*free_exp(f->arg, 1);
