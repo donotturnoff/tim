@@ -3,21 +3,17 @@
 #include <string.h>
 #include "environment.h"
 
-int put_env_var(Env *env, char *name, Type *t, Exp *val) {
+void put_env_var(Env *env, char *name, Exp *val) {
     if (!env) die(INTERPRETER_ERR, "environment is null in put_env_var(NULL, %s, %s)", name, to_string_exp(val));
 
     EnvFrame *frame = (EnvFrame *) malloc_or_die(sizeof(EnvFrame));
-
     frame->name = name;
-    frame->t = t ? copy_type(t) : NULL;
-    frame->val = val ? copy_exp(val) : NULL;
+    frame->val = val;
     frame->next = env->ef;
     if (frame->next) frame->next->prev = frame;
     frame->prev = NULL;
     env->ef = frame;
     if (!env->back_ef) env->back_ef = frame;
-
-    return 1;
 }
 
 Exp *get_env_var(Env *env, char *name) {
@@ -31,37 +27,17 @@ Exp *get_env_var(Env *env, char *name) {
     }
     return NULL;
 }
-
-Type *get_env_var_type(Env *env, char *name) {
-    if (!env) die(INTERPRETER_ERR, "environment is null in get_env_var_type(NULL, %s)", name);
-    EnvFrame *current = env->ef;
-    while (current) {
-        if (strcmp(current->name, name) == 0) {
-            return copy_type(current->t); // FIXME: copy_type()?
-        }
-        current = current->next;
-    }
-    return NULL;
-}
-
-int add_env(Env *dst_env, Env *src_env) {
+void add_env(Env *dst_env, Env *src_env) {
     if (!dst_env) die(INTERPRETER_ERR, "destination environment is null in add_env(NULL, %s)\n", to_string_env(src_env));
-
-    if (!src_env) {
-        return 1;
-    }
+    if (!src_env) return;
 
     EnvFrame *current = src_env->back_ef;
     while (current) {
         char *name = current->name;
-        Type *t = current->t;
         Exp *val = current->val;
-        if (!put_env_var(dst_env, name, t, val)) {
-            return 0;
-        }
+        put_env_var(dst_env, name, val);
         current = current->prev;
     }
-    return 1;
 }
 
 Env *copy_env(Env *env) {
@@ -75,9 +51,9 @@ Env *copy_env(Env *env) {
 char *to_string_env_frame(EnvFrame *ef) {
     char *name = ef->name;
     char *exp_str = to_string_exp(ef->val);
-    size_t buf_size = strlen(name) + (exp_str ? strlen(exp_str) : 1) + 4;
+    size_t buf_size = strlen(name) + strlen(exp_str) + 4;
     char *str = (char *) malloc_or_die(buf_size * sizeof(char));
-    snprintf(str, buf_size, (exp_str ? "[%s=%s]" : "[%s=_]"), name, exp_str);
+    snprintf(str, buf_size, "[%s=%s]", name, exp_str);
     return str;
 }
 
@@ -94,14 +70,13 @@ char *to_string_env(Env *env) {
     size_t len = strlen(str);
     str[len] = '}';
     str[len+1] = '\0';
-    if (!(str = realloc(str, len+1))) die(MEMORY_ERR, "realloc failed");
+    if (!(str = realloc(str, len+2))) die(MEMORY_ERR, "realloc failed");
     return str;
 }
 
 void free_env(Env *env) {
     EnvFrame *current = env->ef;
     while (current) {
-        free_type(current->t);
         free_exp(current->val, 1);
         EnvFrame *next = current->next;
         free(current);
@@ -110,21 +85,70 @@ void free_env(Env *env) {
     free(env);
 }
 
-void print_env_frame(EnvFrame *ef) {
-    const char *t_str = ef->t ? to_string_type(ef->t) : "_";
-    const char *val_str = ef->val ? to_string_exp(ef->val) : "_";
-
-    printf("[%s:%s=%s]", ef->name, t_str, val_str);
-}
-
-void print_env(Env *env) {
-    if (!env) die(RUNTIME_ERR, "environment is null in print_env\n");
-
-    printf("{");
-    EnvFrame *current = env->ef;
-    while(current) {
-        print_env_frame(current);
+Type *get_type_env_var(TypeEnv *env, char *name) {
+    if (!env) die(INTERPRETER_ERR, "environment is null in get_type_env_var(NULL, %s)", name);
+    TypeEnvFrame *current = env->ef;
+    while (current != NULL) {
+        if (strcmp(current->name, name) == 0) {
+            return copy_type(current->t); // FIXME: copy_type()?
+        }
         current = current->next;
     }
-    printf("}");
+    return NULL;
+}
+
+int set_type_env_var(TypeEnv *env, char *name, Type *t) {
+    if (!env) die(INTERPRETER_ERR, "environment is null in set_type_env_var(NULL, %s, %s)", name, to_string_type(t));
+    TypeEnvFrame *current = env->ef;
+    while (current != NULL) {
+        if (strcmp(current->name, name) == 0) {
+            current->t = copy_type(t); // FIXME: copy_type()?
+            return 1;
+        }
+        current = current->next;
+    }
+    return 0;
+}
+
+void push_type_env_var(TypeEnv *env, char *name, Type *t) {
+    if (!env) die(INTERPRETER_ERR, "environment is null in push_type_env_var(NULL, %s, %s)", name, to_string_type(t));
+
+    TypeEnvFrame *frame = (TypeEnvFrame *) malloc_or_die(sizeof(TypeEnvFrame));
+    frame->name = name;
+    frame->t = copy_type(t);
+    frame->next = env->ef;
+    env->ef = frame;
+}
+
+void pop_type_env_var(TypeEnv *env) {
+    if (!env) die(INTERPRETER_ERR, "environment is null in push_type_env_var(NULL)");
+    TypeEnvFrame *frame = env->ef;
+    env->ef = env->ef->next;
+    free(frame);
+}
+
+char *to_string_type_env_frame(TypeEnvFrame *ef) {
+    char *name = ef->name;
+    char *t_str = to_string_type(ef->t);
+    size_t buf_size = strlen(name) + strlen(t_str) + 4;
+    char *str = (char *) malloc_or_die(buf_size * sizeof(char));
+    snprintf(str, buf_size, "[%s:%s]", name, t_str);
+    return str;
+}
+
+char *to_string_type_env(TypeEnv *env) {
+    // TODO: fix this mess, this is just a temporary solution while I do more important things
+    char *str = (char *) malloc_or_die(1000*sizeof(char));
+    str[0] = '{';
+    str[1] = '\0';
+    TypeEnvFrame *current = env->ef;
+    while (current) {
+        strcat(str, to_string_type_env_frame(current));
+        current = current->next;
+    }
+    size_t len = strlen(str);
+    str[len] = '}';
+    str[len+1] = '\0';
+    if (!(str = realloc(str, len+2))) die(MEMORY_ERR, "realloc failed");
+    return str;
 }

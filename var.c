@@ -9,20 +9,18 @@ Exp *var(char *name, Type *t) {
     var_exp->name = VAR;
     var_exp->is_irreducible = 1;
     var_exp->e->var->name = name;
-    var_exp->e->var->t = t;
+    var_exp->e->var->t = t ? t : generic_t();
 
     return var_exp;
 }
 
-Type *type_var(Exp *exp) {
-    Var *var = exp->e->var;
-    Type *var_t = var->t;
-    Type *t;
-    if (var_t) {
-        t = copy_type(var_t);
-    } else {
-        t = generic_t();
-    }
+Type *type_var(TypeEnv *env, Exp *exp, Type *expected) {
+    char *name = exp->e->var->name;
+    Type *env_type = get_type_env_var(env, name);
+    if (!env_type) die(SCOPE_ERR, "variable %s not in scope during typecheck", name);
+    Type *t = most_refined_type(expected, env_type);
+    if (!t) die(TYPE_ERR, "type mismatch in variable definition: %s expected to have type %s but actually has %s", name, to_string_type(exp->e->var->t), to_string_type(env_type));
+    if (!set_type_env_var(env, name, t)) die(SCOPE_ERR, "variable %s not in scope during typecheck", name);
     return t;
 }
 

@@ -17,17 +17,20 @@ Exp *function(Exp *arg, Exp *body, Env *env) {
     return function_exp;
 }
 
-Type *type_function(Exp *exp) {
-    Env *env = exp->env;
+Type *type_function(TypeEnv *env, Exp *exp, Type *expected) {
     Function *function = exp->e->function;
     Exp *arg = function->arg;
     Exp *body = function->body;
 
-    add_env(arg->env, env);
-    add_env(body->env, env);
-    Type *arg_t = type(arg);
-    put_env_var(body->env, arg->e->var->name, arg_t, NULL);
-    Type *body_t = type(body);
+    push_type_env_var(env, arg->e->var->name, arg->e->var->t);
+
+    // Type the argument first so that if the type gets refined the effects on the environment are seen when typing the body
+    // Then retype the argument after typing the body so any effects on the environment caused by typing the body are seen by the argument
+    // TODO: improve this system
+    type(env, arg, expected->name == FUNCTION_T ? most_refined_type(arg->e->var->t, expected->t->f->arg) : generic_t());
+    Type *body_t = type(env, body, expected->name == FUNCTION_T ? expected->t->f->body : generic_t());
+    Type *arg_t = type(env, arg, expected->name == FUNCTION_T ? most_refined_type(arg->e->var->t, expected->t->f->arg) : generic_t());
+    pop_type_env_var(env);
 
     Type *t = (Type *) malloc_or_die(sizeof(Type));
     t->t = (TypeChoice *) malloc_or_die(sizeof(TypeChoice));
@@ -53,10 +56,10 @@ char *to_string_function(Exp *exp) {
 
     size_t len1 = strlen(var_str);
     size_t len2 = strlen(body_str);
-    size_t len = (len1 + len2 + 10);
+    size_t len = (len1 + len2 + 11);
 
     char *buf = (char *) malloc_or_die(len * sizeof(char));
-    snprintf(buf, len, "(fn %s => %s)", var_str, body_str);
+    snprintf(buf, len, "(fun %s -> %s)", var_str, body_str);
 
     free(var_str);
     free(body_str);

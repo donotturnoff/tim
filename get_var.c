@@ -25,11 +25,13 @@ Exp *step_get_var(Exp *exp) {
     return var;
 }
 
-Type *type_get_var(Exp *exp) {
-    Env *env = exp->env;
-    char *name = exp->e->get_var->name;
-    Type *t = get_env_var_type(env, name);
-    if (!t) die(SCOPE_ERR, "variable %s not in scope at typecheck-time", name);
+Type *type_get_var(TypeEnv *env, Exp *exp, Type *expected) {
+    char *name = exp->e->var->name;
+    Type *env_type = get_type_env_var(env, name);
+    if (!env_type) die(SCOPE_ERR, "variable %s not in scope during typecheck", name);
+    Type *t = most_refined_type(env_type, expected);
+    if (!t) die(TYPE_ERR, "type mismatch in variable %s: expected %s, got %s", name, to_string_type(expected), to_string_type(env_type));
+    if (!set_type_env_var(env, name, t)) die(SCOPE_ERR, "variable %s not in scope during typecheck", name);
     return t;
 }
 

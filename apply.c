@@ -43,9 +43,9 @@ Exp *step_apply(Exp *exp) {
             Function *f = exp1->e->function;
             char *arg_name = f->arg->e->var->name;
             Exp *body = f->body;
-            add_env(body->env, env); // TODO: work out why this isn't necessary
+            //add_env(body->env, env); // TODO: work out why this isn't necessary
             add_env(body->env, exp1->env);
-            put_env_var(body->env, arg_name, NULL, exp2);
+            put_env_var(body->env, arg_name, exp2);
             /*free_exp(f->arg, 1);
             free_exp(exp1, 0);
             free_exp(exp, 0);*/
@@ -54,29 +54,19 @@ Exp *step_apply(Exp *exp) {
     }
 }
 
-Type *type_apply(Exp *exp) {
-    Env *env = exp->env;
+Type *type_apply(TypeEnv *env, Exp *exp, Type *expected) {
     Apply *apply = exp->e->apply;
     Exp *function = apply->f;
     Exp *exp1 = apply->exp;
 
-    add_env(function->env, env);
-    add_env(exp1->env, env);
-    Type *f_t = type(function);
-    Type *exp1_t = type(exp1);
-
-    Type *t = NULL;
-
+    Type *exp1_t = type(env, exp1, generic_t());
+    Type *f_t = type(env, function, function_t(exp1_t, expected));
     Type *arg_t = f_t->t->f->arg;
     Type *body_t = f_t->t->f->body;
 
-    if (arg_t->name == GENERIC_T || equal_types(arg_t, exp1_t)) {
-        t = copy_type(body_t);
-    } else {
-        die(TYPE_ERR, "type mismatch in function application: %s cannot be applied to %s", to_string_type(f_t),
+    if (!refine_type(arg_t, exp1_t)) die(TYPE_ERR, "type mismatch in function application: %s cannot be applied to %s", to_string_type(f_t),
             to_string_type(exp1_t));
-    }
-    return t;
+    return body_t;
 }
 
 Exp *copy_apply(Exp *exp) {

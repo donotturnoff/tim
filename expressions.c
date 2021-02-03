@@ -14,16 +14,16 @@ Exp *step(Exp *exp) {
     }
 }
 
-Type *type(Exp *exp) {
+Type *type(TypeEnv *env, Exp *exp, Type *expected) {
     Type *t = NULL;
     switch (exp->name) {
-        case UNIT:      t = unit_t(); break;
-        case INTEGER:   t = integer_t(); break;
-        case FUNCTION:  t = type_function(exp); break;
-        case PLUS:      t = type_plus(exp); break;
-        case APPLY:     t = type_apply(exp); break;
-        case VAR:       t = type_var(exp); break;
-        case GET_VAR:   t = type_get_var(exp); break;
+        case UNIT:      t = type_unit(); break;
+        case INTEGER:   t = type_integer(); break;
+        case FUNCTION:  t = type_function(env, exp, expected); break;
+        case PLUS:      t = type_plus(env, exp); break;
+        case APPLY:     t = type_apply(env, exp, expected); break;
+        case VAR:       t = type_var(env, exp, expected); break;
+        case GET_VAR:   t = type_get_var(env, exp, expected); break;
 
         default: die(INTERPRETER_ERR, "attempted to type unknown expression");
     }

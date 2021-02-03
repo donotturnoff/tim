@@ -16,6 +16,20 @@ int equal_types(Type *t1, Type *t2) {
     }
 }
 
+Type *refine_type(Type *base, Type *refined) {
+    if (base->name == GENERIC_T) return refined;
+    else if (base->name == refined->name) return base;
+    else return NULL;
+}
+
+Type *most_refined_type(Type *t1, Type *t2) {
+    if (t1->name == GENERIC_T) return t2;
+    else if (t2->name == GENERIC_T) return t1;
+    else if (t1->name == t2->name) return t1;
+    else return NULL;
+}
+
+
 Type *allocate_type(TypeName name) {
     Type *t = (Type *) malloc_or_die(sizeof(Type));
     t->name = name;

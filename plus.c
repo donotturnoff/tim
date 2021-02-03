@@ -48,16 +48,13 @@ Exp *step_plus(Exp *exp) {
     }
 }
 
-Type *type_plus(Exp *exp) {
-    Env *env = exp->env;
+Type *type_plus(TypeEnv *env, Exp *exp) {
     Plus *plus = exp->e->plus;
     Exp *exp1 = plus->exp1;
     Exp *exp2 = plus->exp2;
 
-    add_env(exp1->env, env);
-    add_env(exp2->env, env);
-    Type *exp1_t = type(exp1);
-    Type *exp2_t = type(exp2);
+    Type *exp1_t = type(env, exp1, integer_t());
+    Type *exp2_t = type(env, exp2, integer_t());
 
     if (exp1_t->name != INTEGER_T) {
         die(TYPE_ERR, "type mismatch in plus operation: operand 1 is a %s but should be an integer",

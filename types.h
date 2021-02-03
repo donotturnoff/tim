@@ -9,8 +9,6 @@ typedef enum type_name {
 
 typedef union type_choice TypeChoice;
 typedef struct function_type FunctionType;
-typedef struct sum_type SumType;
-typedef struct product_type ProductType;
 
 typedef struct type {
     TypeName name;
@@ -20,8 +18,6 @@ typedef struct type {
 
 typedef union type_choice {
     FunctionType *f;
-    SumType *s;
-    ProductType *p;
 } TypeChoice;
 
 typedef struct function_type {
@@ -29,6 +25,8 @@ typedef struct function_type {
 } FunctionType;
 
 int equal_types(Type *t1, Type *t2);
+Type *refine_type(Type *base, Type *refined);
+Type *most_refined_type(Type *t1, Type *t2);
 Type *generic_t(void);
 Type *unit_t(void);
 Type *integer_t(void);

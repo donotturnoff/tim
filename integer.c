@@ -11,6 +11,10 @@ Exp *integer(int val) {
     return integer_exp;
 }
 
+Type *type_integer(void) {
+    return integer_t();
+}
+
 Exp *copy_integer(Exp *exp) {
     return integer(exp->e->integer->val);
 }

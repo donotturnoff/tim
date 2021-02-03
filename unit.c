@@ -12,6 +12,10 @@ Exp *unit(void) {
     return unit_exp;
 }
 
+Type *type_unit(void) {
+    return unit_t();
+}
+
 Exp *copy_unit(void) {
     return unit();
 }
